@@ -30,7 +30,9 @@ contract OrderBase is ReentrancyGuard{
     // Order certificate key
     string public o_cert;
     // Order submit sdl transaction hash
-    string public o_sdl_trx_id;
+    uint256 public o_sdl_trx_id;
+    // for Order update
+    uint256 public o_pending_sdl_trx_id;
     // @notice 0 created 1 can quote 2 running 3 end order
     OrderStatus public order_status;
 
@@ -47,15 +49,17 @@ contract OrderBase is ReentrancyGuard{
     string public server_uri;
 
 
-    event OrderCreate(address owner_,uint256 cpu,uint256 memory_,uint256 storage_,string cert,string sdl,uint256 order_number);
+    event OrderCreate(address owner_,uint256 cpu,uint256 memory_,uint256 storage_,string cert,uint256 sdl,uint256 order_number);
     event Quote(address  provider,uint256  cpu_price,uint256  memory_price,uint256  storage_price);
     event ChooseQuote(PriceOracle indexed price,uint256 indexed final_price);
     event DepositBalance(uint256 indexed amount);
     event PayBill(address indexed provider, uint256 indexed amount);
     event OrderEnded();
     event UserCancelOrder();
+    event UpdateSDL(uint256 new_sdl_trx_id);
+    event DeployMentUpdated(uint256 old_cpu,uint256 old_memory,uint256 old_storage,uint256 new_cpu,uint256 new_memory,uint256 new_storage);
 
-    constructor(address _order_factory,address provider_factory_,address owner_,uint256 cpu_,uint256 memory_,uint256 storage_,string memory cert_key_,string memory sdl_trx_id_, uint256 order_number){
+    constructor(address _order_factory,address provider_factory_,address owner_,uint256 cpu_,uint256 memory_,uint256 storage_,string memory cert_key_,uint256 sdl_trx_id_, uint256 order_number){
         owner =owner_;
         o_cpu=cpu_;
         o_memory =memory_;
@@ -67,6 +71,7 @@ contract OrderBase is ReentrancyGuard{
         last_pay_time = block.timestamp;
         o_sdl_trx_id = sdl_trx_id_;
         o_cert = cert_key_;
+        o_pending_sdl_trx_id= uint256(0);
         emit OrderCreate(owner_,cpu_,memory_,storage_,cert_key_,sdl_trx_id_,order_number);
     }
 
@@ -132,9 +137,41 @@ contract OrderBase is ReentrancyGuard{
 
     }
     // @dev Modify the sdl submit transaction hash
-    function change_sdl_trx_hash(string memory new_trx_hash) only_owner public{
-        o_sdl_trx_id = new_trx_hash;
+    function change_sdl_trx_hash(uint256 new_trx_hash) only_owner public{
+        require(order_status != OrderStatus.Running && order_status != OrderStatus.Created,"Only the creation and running states can modify the sdl");
+        require(o_pending_sdl_trx_id==uint256(0),"There are update orders in process");
+        if(order_status == OrderStatus.Running){
+            o_pending_sdl_trx_id = new_trx_hash;
+            emit UpdateSDL(new_trx_hash);
+        }
+        if(order_status == OrderStatus.Created){
+            o_sdl_trx_id = new_trx_hash;
+        }
+
     }
+
+    // @dev Provider update order status
+    function update_deployment(uint256 cpu_,uint256 memory_,uint256 storage_,string memory uri_) only_provider nonReentrant public{
+        require(o_pending_sdl_trx_id != uint256(0),"There needs to be an update order task");
+        _pay_billing();
+        // sub resource
+        PriceOracle memory quote_detail  = provide_quotes[final_choice];
+        provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
+
+        final_price = quote_detail.cpu_price *o_cpu+quote_detail.memory_price*memory_+quote_detail.storage_price*storage_;
+
+
+        // add resource
+        provider_factory.consumeResource(quote_detail.provider,cpu_, memory_, storage_);
+        // cal new final_price
+        emit DeployMentUpdated(o_cpu,o_memory,o_storage,cpu_,memory_,storage_);
+        o_cpu = cpu_;
+        o_memory = memory_;
+        o_storage = storage_;
+        server_uri=uri_;
+        o_pending_sdl_trx_id= uint256(0);
+    }
+
 
     // @dev Obtain basic order information
     function order_info() view public returns (Order memory){
@@ -153,9 +190,7 @@ contract OrderBase is ReentrancyGuard{
         return address(0);
     }
 
-    // @dev The provider invokes the payment order
-    function pay_billing() only_provider nonReentrant public{
-        require(block.timestamp>last_pay_time+2000,"Only one call within 2000 seconds is allowed!");
+    function _pay_billing() private{
         uint256 pay_amount = (block.timestamp - last_pay_time) * final_price;
         if (pay_amount>address(this).balance){
             order_status = OrderStatus.Ended;
@@ -169,6 +204,12 @@ contract OrderBase is ReentrancyGuard{
         payable(msg.sender).transfer(pay_amount);
         emit PayBill(msg.sender,pay_amount);
     }
+
+    // @dev The provider invokes the payment order
+    function pay_billing() only_provider nonReentrant public{
+        require(block.timestamp>last_pay_time+2000,"Only one call within 2000 seconds is allowed!");
+        _pay_billing();
+    }
     // @dev The user cancels the order and withdraws all remaining amounts
     function withdraw_fund() only_owner nonReentrant public{
         uint256 left_balance = address(this).balance;
@@ -176,6 +217,7 @@ contract OrderBase is ReentrancyGuard{
             PriceOracle memory quote_detail  = provide_quotes[final_choice];
             provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
         }
+        _pay_billing();
         payable(owner).transfer(left_balance);
         order_status=OrderStatus.Ended;
         emit OrderEnded();

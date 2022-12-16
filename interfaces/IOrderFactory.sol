@@ -9,7 +9,7 @@ struct Order{
     uint256 v_memory;
     uint256 v_storage;
     string cert_key;
-    string trx_id;
+    uint256 trx_id;
     uint8 state;
 
 }

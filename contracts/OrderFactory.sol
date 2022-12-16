@@ -64,7 +64,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
     // @param m_storage  Number of resources requested by the storage
     // @param m_cert  The server uses the certificate public key
     // @param m_trx_id Submit sdl's transaction hash
-    function createOrder(uint256 m_cpu,uint256 m_memory,uint256 m_storage,string memory m_cert,string memory m_trx_id)  nonReentrant public returns(address){
+    function createOrder(uint256 m_cpu,uint256 m_memory,uint256 m_storage,string memory m_cert,uint256 m_trx_id)  nonReentrant public returns(address){
         require(provider_address != address(0),"please wait admin set provider factory!");
         require(cert_center != address(0),"please wait admin set cert center!");
         require(ICert(cert_center).user_cert_state(msg.sender,m_cert) == CertState.Using);

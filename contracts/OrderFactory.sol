@@ -80,7 +80,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
     // @dev Obtain the order according to the order number
     function getOrder(uint256 orderId) external override view returns(Order memory) {
         require(orderId<orderCount,"order id not exists");
-        return OrderBase(orders[orderId]).OrderInfo();
+        return OrderBase(orders[orderId]).order_info();
     }
 
     // @dev Check whether it is a legitimate order address
@@ -89,13 +89,80 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
         return orderNumber;
     }
 
+    // @dev Query all orders of the user
+    function getUserAllOrder(address userAddress) public view returns(Order[] memory){
+        uint256 tmp_count = 0;
+        for(uint i = 1; i < orderCount; i++){
+
+            Order memory tmp_order = OrderBase( orders[i]).order_info();
+
+            if( tmp_order.owner==userAddress){
+                tmp_count=tmp_count+1;
+            }
+        }
+        Order[] memory res = new Order[](tmp_count);
+        uint256 index =0;
+        for(uint i = 1; i < orderCount; i++){
+            Order memory tmp_order = OrderBase( orders[i]).order_info();
+            if( tmp_order.owner==userAddress){
+
+                Order memory m_order;
+                m_order.owner=tmp_order.owner;
+                m_order.v_cpu=tmp_order.v_cpu;
+                m_order.v_memory=tmp_order.v_memory;
+                m_order.v_storage=tmp_order.v_storage;
+                m_order.cert_key=tmp_order.cert_key;
+                m_order.trx_id=tmp_order.trx_id;
+                m_order.state=tmp_order.state;
+                res[index] = m_order;
+                index = index+1;
+            }
+        }
+        return res;
+    }
+
+    // @dev Query all orders of the provider
+    function getProviderAllOrder(address providerAddress) public view returns(Order[] memory){
+        uint256 tmp_count = 0;
+        for(uint i = 1; i < orderCount; i++){
+
+            address tmp_provider = OrderBase( orders[i]).query_provider_address();
+            if(tmp_provider == providerAddress){
+                tmp_count = tmp_count+1;
+            }
+
+
+        }
+
+        Order[] memory res = new Order[](tmp_count);
+        uint256 index =0;
+        for(uint i = 1; i < orderCount; i++){
+
+            address tmp_provider = OrderBase( orders[i]).query_provider_address();
+            if(tmp_provider == providerAddress){
+                Order memory tmp_order = OrderBase( orders[i]).order_info();
+                Order memory m_order;
+                m_order.owner=tmp_order.owner;
+                m_order.v_cpu=tmp_order.v_cpu;
+                m_order.v_memory=tmp_order.v_memory;
+                m_order.v_storage=tmp_order.v_storage;
+                m_order.cert_key=tmp_order.cert_key;
+                m_order.trx_id=tmp_order.trx_id;
+                m_order.state=tmp_order.state;
+                res[index] = m_order;
+                index = index+1;
+            }
+        }
+        return res;
+    }
+
     // @dev Obtain all quotable orders
     function getUnCompleteOrder() public view returns(Order[] memory){
 
         uint256 tmp_count = 0;
         for(uint i = 1; i < orderCount; i++){
 
-            Order memory tmp_order = OrderBase( orders[i]).OrderInfo();
+            Order memory tmp_order = OrderBase( orders[i]).order_info();
 
             if( tmp_order.state==1){
                 tmp_count=tmp_count+1;
@@ -104,7 +171,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
         Order[] memory res = new Order[](tmp_count);
         uint256 index =0;
         for(uint i = 1; i < orderCount; i++){
-            Order memory tmp_order = OrderBase( orders[i]).OrderInfo();
+            Order memory tmp_order = OrderBase( orders[i]).order_info();
             if( tmp_order.state==1){
 
                 Order memory m_order;

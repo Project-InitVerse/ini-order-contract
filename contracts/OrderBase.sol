@@ -44,6 +44,7 @@ contract OrderBase is ReentrancyGuard{
     uint256 public final_choice;
     // Time of last payment
     uint256 public last_pay_time;
+    string public server_uri;
 
 
     event OrderCreate(address owner_,uint256 cpu,uint256 memory_,uint256 storage_,string cert,string sdl,uint256 order_number);
@@ -131,13 +132,25 @@ contract OrderBase is ReentrancyGuard{
 
     }
     // @dev Modify the sdl submit transaction hash
-    function change_sdl_trx_hash(string new_trx_hash) only_owner public{
+    function change_sdl_trx_hash(string memory new_trx_hash) only_owner public{
         o_sdl_trx_id = new_trx_hash;
     }
 
     // @dev Obtain basic order information
-    function OrderInfo() view public returns (Order memory){
+    function order_info() view public returns (Order memory){
         return Order(owner,o_cpu,o_memory,o_storage,o_cert,o_sdl_trx_id,uint8(order_status));
+    }
+    // @dev submit server uri
+    function submit_server_uri(string memory uri) only_provider public {
+        server_uri = uri;
+    }
+    // @dev query provider address
+    function query_provider_address() view external  returns(address){
+        if (order_status==OrderStatus.Ended || order_status==OrderStatus.Running){
+            return provide_quotes[final_choice].provider;
+
+        }
+        return address(0);
     }
 
     // @dev The provider invokes the payment order
@@ -147,6 +160,8 @@ contract OrderBase is ReentrancyGuard{
         if (pay_amount>address(this).balance){
             order_status = OrderStatus.Ended;
             pay_amount = address(this).balance;
+            PriceOracle memory quote_detail  = provide_quotes[final_choice];
+            provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
             emit OrderEnded();
         }
         console.log(pay_amount);
@@ -157,6 +172,10 @@ contract OrderBase is ReentrancyGuard{
     // @dev The user cancels the order and withdraws all remaining amounts
     function withdraw_fund() only_owner nonReentrant public{
         uint256 left_balance = address(this).balance;
+        if (order_status==OrderStatus.Running){
+            PriceOracle memory quote_detail  = provide_quotes[final_choice];
+            provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
+        }
         payable(owner).transfer(left_balance);
         order_status=OrderStatus.Ended;
         emit OrderEnded();

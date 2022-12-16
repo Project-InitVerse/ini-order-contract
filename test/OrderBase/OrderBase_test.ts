@@ -206,6 +206,55 @@ describe('order factory',function(){
 
   });
 
+
+  it("choose_provider and query", async function() {
+    await  this.orderFactory.set_provider_factory(this.providerFactory.address);
+    await  this.orderFactory.set_cert_center(this.certCenter.address);
+    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","dsdasdadas");
+
+    let order_base_address_1 =  await this.orderFactory.orders(1);
+
+    this.order_base_1 = <OrderBase>await ethers.getContractAt("OrderBase",order_base_address_1);
+
+    expect(await this.order_base_1.connect(order_1).deposit_balance({value:ethers.utils.parseEther("5")}));
+
+    await expect(this.order_base_1.connect(provider_1).quote(10000000,10000000,2000000));
+    await expect(this.order_base_1.connect(provider_2).quote(20000000,20000000,4000000));
+
+    expect(await this.order_base_1.order_status()).to.be.equal(1);
+    await expect(this.order_base_1.connect(order_2).choose_provider(0)).to.be.reverted;
+    expect(await this.order_base_1.connect(order_1).choose_provider(0));
+    expect(await this.order_base_1.order_status()).to.be.equal(2);
+    await expect(this.order_base_1.connect(order_1).choose_provider(1)).to.be.reverted;
+    expect(await this.order_base_1.final_price()).to.be.equal(ethers.BigNumber.from(((100*10000000)+(1000*10000000)+(100000*2000000)) ));
+    let unCompleted =  await this.orderFactory.getUnCompleteOrder();
+    expect(unCompleted.length).to.be.equal(0);
+    let userOrders =  await this.orderFactory.getUserAllOrder(order_1.address);
+    expect(userOrders.length).to.be.equal(1);
+    let providerOrders =  await this.orderFactory.getProviderAllOrder(mock_addr);
+    expect(providerOrders.length).to.be.equal(1);
+    // let block = await ethers.provider.getBlock("latest");
+
+    let start_time = await this.order_base_1.last_pay_time();
+    // let start_time= BigNumber.from(111);
+    // start_time.toNumber()
+    await network.provider.request({
+      method: "evm_setNextBlockTimestamp",
+      params: [start_time.toNumber() + 0x16e3600],
+    });
+
+    let old_balance = await ethers.provider.getBalance(provider_1.address);
+    let pay_billing =await this.order_base_1.connect(provider_1).pay_billing();
+    let receipt = await pay_billing.wait();
+    var gasUsed = receipt.effectiveGasPrice.mul(receipt.gasUsed);
+    //let transaction_fee =  res.gasLimit * res.
+    let new_balance = await ethers.provider.getBalance(provider_1.address);
+    expect(new_balance.sub(old_balance).add(gasUsed)).to.be.equal(ethers.utils.parseEther("5"));
+    expect(await ethers.provider.getBalance(this.order_base_1.address)).to.be.equal(0);
+
+  });
+
+
   it("withdraw fund", async function() {
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);
     await  this.orderFactory.set_cert_center(this.certCenter.address);

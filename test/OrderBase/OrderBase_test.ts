@@ -20,17 +20,17 @@ describe('order factory',function(){
   it('init',async function(){
 
     expect(await this.orderFactory.owner()).to.be.equal(factory_admin.address);
-    await expect(this.orderFactory.createOrder(100,1000,1000000,"dsadsa","dsadasda")).to.be.revertedWith('please wait admin set provider factory!');
+    await expect(this.orderFactory.createOrder(100,1000,1000000,"dsadsa","1234")).to.be.revertedWith('please wait admin set provider factory!');
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);
-    await expect(this.orderFactory.createOrder(100,1000,1000000,"dsadsa","dsadasda")).to.be.revertedWith('please wait admin set cert center!');
+    await expect(this.orderFactory.createOrder(100,1000,1000000,"dsadsa","1234")).to.be.revertedWith('please wait admin set cert center!');
 
   })
   it("create order", async function() {
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);
     await  this.orderFactory.set_cert_center(this.certCenter.address);
-    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","dsdasdadas");
+    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","1234");
 
-    await this.orderFactory.connect(order_2).createOrder(200,2000,200000,"dsdas","dsdasdadas");
+    await this.orderFactory.connect(order_2).createOrder(200,2000,200000,"dsdas","1234");
 
 
     expect(await this.orderFactory.orders(1)).to.be.not.equal(zero_addr);
@@ -45,22 +45,22 @@ describe('order factory',function(){
     expect(await this.order_base_1.o_storage()).to.be.equal(100000);
     expect(await this.order_base_1.o_order_number()).to.be.equal(1);
     expect(await this.order_base_1.o_cert()).to.be.equal("dsdas");
-    expect(await this.order_base_1.o_sdl_trx_id()).to.be.equal("dsdasdadas");
+    expect(await this.order_base_1.o_sdl_trx_id()).to.be.equal("1234");
     expect(await this.order_base_1.owner()).to.be.equal(order_1.address);
     expect(await this.order_base_2.o_cpu()).to.be.equal(200);
     expect(await this.order_base_2.o_memory()).to.be.equal(2000);
     expect(await this.order_base_2.o_storage()).to.be.equal(200000);
     expect(await this.order_base_2.o_order_number()).to.be.equal(2);
     expect(await this.order_base_2.o_cert()).to.be.equal("dsdas");
-    expect(await this.order_base_2.o_sdl_trx_id()).to.be.equal("dsdasdadas");
+    expect(await this.order_base_2.o_sdl_trx_id()).to.be.equal("1234");
     expect(await this.order_base_2.owner()).to.be.equal(order_2.address);
 
   });
   it("deposit_balance", async function() {
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);
     await  this.orderFactory.set_cert_center(this.certCenter.address);
-    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","dsdasdadas");
-    await this.orderFactory.connect(order_2).createOrder(200,2000,200000,"dsdas","dsdasdadas");
+    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","1234");
+    await this.orderFactory.connect(order_2).createOrder(200,2000,200000,"dsdas","1234");
     let order_base_address_1 =  await this.orderFactory.orders(1);
     let order_base_address_2 = await this.orderFactory.orders(2);
     this.order_base_1 = <OrderBase>await ethers.getContractAt("OrderBase",order_base_address_1);
@@ -122,8 +122,8 @@ describe('order factory',function(){
   it("choose_provider", async function() {
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);
     await  this.orderFactory.set_cert_center(this.certCenter.address);
-    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","dsdasdadas");
-    await this.orderFactory.connect(order_2).createOrder(200,2000,200000,"dsdas","dsdasdadas");
+    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","1234");
+    await this.orderFactory.connect(order_2).createOrder(200,2000,200000,"dsdas","1234");
     let order_base_address_1 =  await this.orderFactory.orders(1);
     let order_base_address_2 = await this.orderFactory.orders(2);
     this.order_base_1 = <OrderBase>await ethers.getContractAt("OrderBase",order_base_address_1);
@@ -166,7 +166,7 @@ describe('order factory',function(){
   it("choose_provider and pay all fee", async function() {
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);
     await  this.orderFactory.set_cert_center(this.certCenter.address);
-    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","dsdasdadas");
+    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","1234");
 
     let order_base_address_1 =  await this.orderFactory.orders(1);
 
@@ -210,7 +210,7 @@ describe('order factory',function(){
   it("choose_provider and query", async function() {
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);
     await  this.orderFactory.set_cert_center(this.certCenter.address);
-    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","dsdasdadas");
+    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","1234");
 
     let order_base_address_1 =  await this.orderFactory.orders(1);
 
@@ -258,8 +258,8 @@ describe('order factory',function(){
   it("withdraw fund", async function() {
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);
     await  this.orderFactory.set_cert_center(this.certCenter.address);
-    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","dsdasdadas");
-    await this.orderFactory.connect(order_2).createOrder(200,2000,200000,"dsdas","dsdasdadas");
+    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,"dsdas","1234");
+    await this.orderFactory.connect(order_2).createOrder(200,2000,200000,"dsdas","1234");
     let order_base_address_1 =  await this.orderFactory.orders(1);
     let order_base_address_2 = await this.orderFactory.orders(2);
     this.order_base_1 = <OrderBase>await ethers.getContractAt("OrderBase",order_base_address_1);

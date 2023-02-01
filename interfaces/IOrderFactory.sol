@@ -4,11 +4,12 @@ pragma solidity >=0.8.4;
 
 
 struct Order{
+    address contract_address;
     address owner;
     uint256 v_cpu;
     uint256 v_memory;
     uint256 v_storage;
-    string cert_key;
+    uint256 cert_key;
     uint256 trx_id;
     uint8 state;
 

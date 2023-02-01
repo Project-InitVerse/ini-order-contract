@@ -28,7 +28,7 @@ contract OrderBase is ReentrancyGuard{
     // Order No.
     uint256 public o_order_number;
     // Order certificate key
-    string public o_cert;
+    uint256 public o_cert;
     // Order submit sdl transaction hash
     uint256 public o_sdl_trx_id;
     // for Order update
@@ -47,19 +47,21 @@ contract OrderBase is ReentrancyGuard{
     // Time of last payment
     uint256 public last_pay_time;
     string public server_uri;
+    uint256 public totalSpent;
+    
 
 
-    event OrderCreate(address owner_,uint256 cpu,uint256 memory_,uint256 storage_,string cert,uint256 sdl,uint256 order_number);
+    event OrderCreate(address owner_,uint256 cpu,uint256 memory_,uint256 storage_,uint256 cert,uint256 sdl,uint256 order_number);
     event Quote(address  provider,uint256  cpu_price,uint256  memory_price,uint256  storage_price);
-    event ChooseQuote(PriceOracle indexed price,uint256 indexed final_price);
+    event ChooseQuote(address indexed provider,uint256 indexed final_price);
     event DepositBalance(uint256 indexed amount);
     event PayBill(address indexed provider, uint256 indexed amount);
     event OrderEnded();
     event UserCancelOrder();
     event UpdateSDL(uint256 new_sdl_trx_id);
     event DeployMentUpdated(uint256 old_cpu,uint256 old_memory,uint256 old_storage,uint256 new_cpu,uint256 new_memory,uint256 new_storage);
-
-    constructor(address _order_factory,address provider_factory_,address owner_,uint256 cpu_,uint256 memory_,uint256 storage_,string memory cert_key_,uint256 sdl_trx_id_, uint256 order_number){
+    event CanQuote();
+    constructor(address _order_factory,address provider_factory_,address owner_,uint256 cpu_,uint256 memory_,uint256 storage_,uint256 cert_key_,uint256 sdl_trx_id_, uint256 order_number){
         owner =owner_;
         o_cpu=cpu_;
         o_memory =memory_;
@@ -72,6 +74,7 @@ contract OrderBase is ReentrancyGuard{
         o_sdl_trx_id = sdl_trx_id_;
         o_cert = cert_key_;
         o_pending_sdl_trx_id= uint256(0);
+        totalSpent=uint256(0);
         emit OrderCreate(owner_,cpu_,memory_,storage_,cert_key_,sdl_trx_id_,order_number);
     }
 
@@ -96,7 +99,7 @@ contract OrderBase is ReentrancyGuard{
         require(order_status==OrderStatus.Running);
         PriceOracle memory quote_data = provide_quotes[final_choice];
         //todo just for test.
-        //require(msg.sender == IProvider( quote_data.provider).owner());
+        require(msg.sender == IProvider( quote_data.provider).owner());
         _;
     }
     // @dev provider quote interface
@@ -114,6 +117,11 @@ contract OrderBase is ReentrancyGuard{
     }
 
     // @dev Select provider quotation
+    function query_provide_quotes() view public returns(PriceOracle[] memory){
+        return provide_quotes;
+    }
+
+    // @dev Select provider quotation
     // @param provider quote select serial number
     function choose_provider(uint256 quote_index) only_owner only_quote_period nonReentrant public {
         require(quote_index< provide_quotes.length,"invaild index");
@@ -123,7 +131,7 @@ contract OrderBase is ReentrancyGuard{
         final_choice = quote_index;
         final_price = quote_detail.cpu_price *o_cpu+quote_detail.memory_price*o_memory+quote_detail.storage_price*o_storage;
         last_pay_time = block.timestamp;
-        emit ChooseQuote(quote_detail,final_price);
+        emit ChooseQuote(quote_detail.provider,final_price);
 
     }
     // @dev Deposit for balance
@@ -131,7 +139,7 @@ contract OrderBase is ReentrancyGuard{
         require(msg.value >= order_factory.get_minimum_deposit_amount(),"The minimum top-up amount limit is not met");
         if (order_status ==OrderStatus.Created){
             order_status =OrderStatus.Quoting;
-
+            emit CanQuote();
         }
         emit DepositBalance(msg.value);
 
@@ -153,7 +161,7 @@ contract OrderBase is ReentrancyGuard{
     // @dev Provider update order status
     function update_deployment(uint256 cpu_,uint256 memory_,uint256 storage_,string memory uri_) only_provider nonReentrant public{
         require(o_pending_sdl_trx_id != uint256(0),"There needs to be an update order task");
-        _pay_billing();
+        _pay_billing(payable(msg.sender));
         // sub resource
         PriceOracle memory quote_detail  = provide_quotes[final_choice];
         provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
@@ -175,7 +183,7 @@ contract OrderBase is ReentrancyGuard{
 
     // @dev Obtain basic order information
     function order_info() view public returns (Order memory){
-        return Order(owner,o_cpu,o_memory,o_storage,o_cert,o_sdl_trx_id,uint8(order_status));
+        return Order(address(this),owner,o_cpu,o_memory,o_storage,o_cert,o_sdl_trx_id,uint8(order_status));
     }
     // @dev submit server uri
     function submit_server_uri(string memory uri) only_provider public {
@@ -190,7 +198,7 @@ contract OrderBase is ReentrancyGuard{
         return address(0);
     }
 
-    function _pay_billing() private{
+    function _pay_billing(address payable pay_target) private returns(uint256){
         uint256 pay_amount = (block.timestamp - last_pay_time) * final_price;
         if (pay_amount>address(this).balance){
             order_status = OrderStatus.Ended;
@@ -199,16 +207,18 @@ contract OrderBase is ReentrancyGuard{
             provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
             emit OrderEnded();
         }
-        console.log(pay_amount);
+        
         last_pay_time = block.timestamp;
-        payable(msg.sender).transfer(pay_amount);
-        emit PayBill(msg.sender,pay_amount);
+        payable(pay_target).transfer(pay_amount);
+        totalSpent = totalSpent+pay_amount;
+        emit PayBill(pay_target,pay_amount);
+        return pay_amount;
     }
 
     // @dev The provider invokes the payment order
     function pay_billing() only_provider nonReentrant public{
         require(block.timestamp>last_pay_time+2000,"Only one call within 2000 seconds is allowed!");
-        _pay_billing();
+        _pay_billing(payable(msg.sender));
     }
     // @dev The user cancels the order and withdraws all remaining amounts
     function withdraw_fund() only_owner nonReentrant public{
@@ -216,12 +226,16 @@ contract OrderBase is ReentrancyGuard{
         if (order_status==OrderStatus.Running){
             PriceOracle memory quote_detail  = provide_quotes[final_choice];
             provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
+            left_balance = left_balance - _pay_billing(payable( IProvider( quote_detail.provider).owner()));
         }
-        _pay_billing();
-        payable(owner).transfer(left_balance);
+        if(left_balance>0){
+            payable(owner).transfer(left_balance);
+        }
+        
         order_status=OrderStatus.Ended;
         emit OrderEnded();
         emit UserCancelOrder();
     }
+
 
 }

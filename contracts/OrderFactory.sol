@@ -64,10 +64,10 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
     // @param m_storage  Number of resources requested by the storage
     // @param m_cert  The server uses the certificate public key
     // @param m_trx_id Submit sdl's transaction hash
-    function createOrder(uint256 m_cpu,uint256 m_memory,uint256 m_storage,string memory m_cert,uint256 m_trx_id)  nonReentrant public returns(address){
+    function createOrder(uint256 m_cpu,uint256 m_memory,uint256 m_storage,uint256 m_cert,uint256 m_trx_id)  nonReentrant public returns(address){
         require(provider_address != address(0),"please wait admin set provider factory!");
         require(cert_center != address(0),"please wait admin set cert center!");
-        require(ICert(cert_center).user_cert_state(msg.sender,m_cert) == CertState.Using);
+        require(ICert(cert_center).getUserCert(msg.sender,m_cert).state == CertState.Using);
 
         OrderBase base = new OrderBase(address(this),provider_address,msg.sender,m_cpu,m_memory,m_storage,m_cert,m_trx_id,orderCount);
         emit OrderCreation(orderCount,msg.sender,address(base));
@@ -107,7 +107,8 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
             if( tmp_order.owner==userAddress){
 
                 Order memory m_order;
-                m_order.owner=tmp_order.owner;
+                m_order.owner=orders[i];
+                m_order.contract_address=orders[i];
                 m_order.v_cpu=tmp_order.v_cpu;
                 m_order.v_memory=tmp_order.v_memory;
                 m_order.v_storage=tmp_order.v_storage;
@@ -143,6 +144,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
                 Order memory tmp_order = OrderBase( orders[i]).order_info();
                 Order memory m_order;
                 m_order.owner=tmp_order.owner;
+                m_order.contract_address=tmp_order.contract_address;
                 m_order.v_cpu=tmp_order.v_cpu;
                 m_order.v_memory=tmp_order.v_memory;
                 m_order.v_storage=tmp_order.v_storage;
@@ -154,6 +156,21 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
             }
         }
         return res;
+    }
+
+    // @dev Query all orders of the provider
+    function getProviderActiveOrderCount(address providerAddress) public view returns(uint256){
+        uint256 tmp_count = 0;
+        for(uint i = 1; i < orderCount; i++){
+
+            address tmp_provider = OrderBase( orders[i]).query_provider_address();
+            if(tmp_provider == providerAddress){
+                if(OrderBase( orders[i]).order_status()==OrderStatus.Running){
+                    tmp_count = tmp_count+1;
+                }
+            }
+        }
+        return tmp_count;
     }
 
     // @dev Obtain all quotable orders
@@ -176,6 +193,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
 
                 Order memory m_order;
                 m_order.owner=tmp_order.owner;
+                m_order.contract_address=tmp_order.contract_address;
                 m_order.v_cpu=tmp_order.v_cpu;
                 m_order.v_memory=tmp_order.v_memory;
                 m_order.v_storage=tmp_order.v_storage;

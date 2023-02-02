@@ -115,6 +115,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
                 m_order.cert_key=tmp_order.cert_key;
                 m_order.trx_id=tmp_order.trx_id;
                 m_order.state=tmp_order.state;
+                m_order.orderId=tmp_order.orderId;
                 res[index] = m_order;
                 index = index+1;
             }
@@ -151,6 +152,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
                 m_order.cert_key=tmp_order.cert_key;
                 m_order.trx_id=tmp_order.trx_id;
                 m_order.state=tmp_order.state;
+                m_order.orderId=tmp_order.orderId;
                 res[index] = m_order;
                 index = index+1;
             }
@@ -200,6 +202,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
                 m_order.cert_key=tmp_order.cert_key;
                 m_order.trx_id=tmp_order.trx_id;
                 m_order.state=tmp_order.state;
+                m_order.orderId=tmp_order.orderId;
                 res[index] = m_order;
                 index = index+1;
             }

@@ -12,6 +12,7 @@ struct Order{
     uint256 cert_key;
     uint256 trx_id;
     uint8 state;
+    uint256 orderId;
 
 }
 

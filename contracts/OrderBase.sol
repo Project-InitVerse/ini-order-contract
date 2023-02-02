@@ -88,6 +88,7 @@ contract OrderBase is ReentrancyGuard{
         require(order_status==OrderStatus.Quoting, 'only quote period can commit submission of quotation!');
         _;
     }
+    
     // @dev Only the payment phase is called
     modifier only_pay_period() {
         require(order_status==OrderStatus.Created|| order_status==OrderStatus.Running, 'only inital period or running period can deposit balance!');
@@ -183,7 +184,7 @@ contract OrderBase is ReentrancyGuard{
 
     // @dev Obtain basic order information
     function order_info() view public returns (Order memory){
-        return Order(address(this),owner,o_cpu,o_memory,o_storage,o_cert,o_sdl_trx_id,uint8(order_status));
+        return Order(address(this),owner,o_cpu,o_memory,o_storage,o_cert,o_sdl_trx_id,uint8(order_status),o_order_number);
     }
     // @dev submit server uri
     function submit_server_uri(string memory uri) only_provider public {

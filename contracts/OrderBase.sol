@@ -192,7 +192,7 @@ contract OrderBase is ReentrancyGuard{
     }
     // @dev query provider address
     function query_provider_address() view external  returns(address){
-        if (order_status==OrderStatus.Ended || order_status==OrderStatus.Running){
+        if ((order_status==OrderStatus.Ended || order_status==OrderStatus.Running) &&final_price>0){
             return provide_quotes[final_choice].provider;
 
         }
@@ -226,11 +226,15 @@ contract OrderBase is ReentrancyGuard{
         uint256 left_balance = address(this).balance;
         if (order_status==OrderStatus.Running){
             PriceOracle memory quote_detail  = provide_quotes[final_choice];
-            provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
             left_balance = left_balance - _pay_billing(payable( IProvider( quote_detail.provider).owner()));
+            if(left_balance>0){
+                provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
+                payable(owner).transfer(left_balance);
+                left_balance=0;
+            }
         }
-        if(left_balance>0){
-            payable(owner).transfer(left_balance);
+       if(left_balance>0){
+           payable(owner).transfer(left_balance);
         }
         
         order_status=OrderStatus.Ended;

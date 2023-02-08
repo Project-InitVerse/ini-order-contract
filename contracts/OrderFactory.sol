@@ -107,8 +107,8 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
             if( tmp_order.owner==userAddress){
 
                 Order memory m_order;
-                m_order.owner=orders[i];
-                m_order.contract_address=orders[i];
+                m_order.owner=tmp_order.owner;
+                m_order.contract_address=tmp_order.contract_address;
                 m_order.v_cpu=tmp_order.v_cpu;
                 m_order.v_memory=tmp_order.v_memory;
                 m_order.v_storage=tmp_order.v_storage;

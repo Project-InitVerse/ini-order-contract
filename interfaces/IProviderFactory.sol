@@ -17,9 +17,8 @@ interface IProviderFactory{
 }
 
 interface IProvider{
-    function getLeftResource() external view returns(uint256,uint256,uint256);
-    function getTotalResource() external view returns(uint256,uint256,uint256);
     function consumeResource(uint256 ,uint256 ,uint256 ) external;
     function recoverResource(uint256, uint256, uint256) external;
+    function challenge() external view returns(bool);
     function owner() external view returns(address);
 }

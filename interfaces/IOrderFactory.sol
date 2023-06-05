@@ -25,6 +25,8 @@ interface IOrderFactory{
 
      function getOrder(uint256 orderId) external view returns(Order memory);
      function checkIsOrder(address orderAddress) external view returns(uint256);
+    function team_percent()external view returns(uint256);
+    function all_percent()external view returns(uint256);
 }
 
 

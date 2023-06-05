@@ -4,6 +4,8 @@ import "./ReentrancyGuard.sol";
 import "hardhat/console.sol";
 import "../interfaces/IProviderFactory.sol";
 import "../interfaces/IOrderFactory.sol";
+import "../interfaces/IValidatorFactory.sol";
+
 struct PriceOracle{
     address provider;
     uint256 cpu_price;
@@ -48,7 +50,7 @@ contract OrderBase is ReentrancyGuard{
     uint256 public last_pay_time;
     string public server_uri;
     uint256 public totalSpent;
-    
+    IValidatorFactory public constant validator_factory = IValidatorFactory(0x000000000000000000000000000000000000c002);
 
 
     event OrderCreate(address owner_,uint256 cpu,uint256 memory_,uint256 storage_,uint256 cert,uint256 sdl,uint256 order_number);
@@ -88,7 +90,7 @@ contract OrderBase is ReentrancyGuard{
         require(order_status==OrderStatus.Quoting, 'only quote period can commit submission of quotation!');
         _;
     }
-    
+
     // @dev Only the payment phase is called
     modifier only_pay_period() {
         require(order_status==OrderStatus.Created|| order_status==OrderStatus.Running, 'only inital period or running period can deposit balance!');
@@ -110,6 +112,7 @@ contract OrderBase is ReentrancyGuard{
     function quote(uint256 p_cpu,uint256 p_memory,uint256 p_storage) only_quote_period nonReentrant public returns (uint256){
         address provider = provider_factory.getProvideContract(msg.sender);
         require(provider!=address(0),"only provider can quote");
+        require(!IProvider(provider).challenge(),"only not challenge provider");
         (uint256 r_cpu,uint256 r_memory,uint256 r_storage) = provider_factory.getProvideResource(provider);
         require(r_cpu>=o_cpu&&r_memory>=o_memory&&r_storage>=o_memory,"Insufficient resource balance");
         provide_quotes.push(PriceOracle(provider,p_cpu,p_memory,p_storage));
@@ -127,6 +130,7 @@ contract OrderBase is ReentrancyGuard{
     function choose_provider(uint256 quote_index) only_owner only_quote_period nonReentrant public {
         require(quote_index< provide_quotes.length,"invaild index");
         PriceOracle memory quote_detail  = provide_quotes[quote_index];
+        require(!IProvider(quote_detail.provider).challenge(),"only not challenge provider");
         provider_factory.consumeResource(quote_detail.provider,o_cpu, o_memory, o_storage);
         order_status = OrderStatus.Running;
         final_choice = quote_index;
@@ -198,7 +202,13 @@ contract OrderBase is ReentrancyGuard{
         }
         return address(0);
     }
+    function sendValue(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, "Address: insufficient balance");
 
+        // solhint-disable-next-line avoid-low-level-calls, avoid-call-value
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
+    }
     function _pay_billing(address payable pay_target) private returns(uint256){
         uint256 pay_amount = (block.timestamp - last_pay_time) * final_price;
         if (pay_amount>address(this).balance){
@@ -208,11 +218,13 @@ contract OrderBase is ReentrancyGuard{
             provider_factory.recoverResource(quote_detail.provider,o_cpu, o_memory, o_storage);
             emit OrderEnded();
         }
-        
-        last_pay_time = block.timestamp;
-        payable(pay_target).transfer(pay_amount);
+        uint256 team_pay = pay_amount * order_factory.team_percent()/order_factory.all_percent();
+        sendValue(payable(validator_factory.team_address()),team_pay);
+        sendValue(pay_target,pay_amount - team_pay);
+        //payable(pay_target).transfer(pay_amount);
         totalSpent = totalSpent+pay_amount;
-        emit PayBill(pay_target,pay_amount);
+        emit PayBill(validator_factory.team_address(),team_pay);
+        emit PayBill(pay_target,pay_amount - team_pay);
         return pay_amount;
     }
 
@@ -236,7 +248,7 @@ contract OrderBase is ReentrancyGuard{
        if(left_balance>0){
            payable(owner).transfer(left_balance);
         }
-        
+
         order_status=OrderStatus.Ended;
         emit OrderEnded();
         emit UserCancelOrder();

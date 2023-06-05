@@ -15,7 +15,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
     // Mapping of order address to number
     mapping(address => uint256) public order_base_map;
     // provider factory address
-    address public provider_address;
+    address public constant provider_address = address(0x000000000000000000000000000000000000C003);
     // Contract owner
     address public owner;
     // Minimum order deposit amount
@@ -24,11 +24,13 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
     address public cert_center;
     // Contract creation event
     event OrderCreation(uint256 indexed orderNumber,address indexed owner,address indexed order_addr);
-
+    uint256 public override team_percent;
+    uint256 public override all_percent;
     // @dev Initialization parameters
     constructor() {
         orderCount=1;
-
+        team_percent = 100;
+        all_percent = 1000;
         owner = msg.sender;
 
         minimum_deposit_amount = 5 ether;
@@ -41,18 +43,22 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
         _;
     }
 
-
+    function changePercent(uint256 _team_percent,uint256 _all_percent) only_owner public{
+        require(_team_percent < _all_percent);
+        team_percent = _team_percent;
+        all_percent = _all_percent;
+    }
     // @dev Change the owner of the contract
     // @param Owner of the new contract
     function changeOwner(address new_owner) nonReentrant only_owner public{
         owner = new_owner;
     }
 
-    // @dev Modify the provider factory address
-    // @param new factory address
-    function set_provider_factory(address factory_addr) only_owner nonReentrant public{
-        provider_address = factory_addr;
-    }
+    //    // @dev Modify the provider factory address
+    //    // @param new factory address
+    //    function set_provider_factory(address factory_addr) only_owner nonReentrant public{
+    //        provider_address = factory_addr;
+    //    }
     // @dev Modify the cert center address
     // @param new cert center address
     function set_cert_center(address cert_center_) only_owner nonReentrant public{

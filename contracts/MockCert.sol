@@ -9,5 +9,10 @@ import "../interfaces/ICert.sol";
         function user_cert_state(address user,string memory cert) external override view returns(CertState){
             return CertState.Using;
     }
+        function getUserCert(address user,uint256 index)external view returns(certRetInfo memory){
+            certRetInfo memory ret;
+            ret.state = CertState.Using;
+            return ret;
+        }
 
 }

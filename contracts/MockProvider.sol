@@ -4,17 +4,36 @@ import "./ReentrancyGuard.sol";
 import "hardhat/console.sol";
 import "../interfaces/IProviderFactory.sol";
 import "../interfaces/IOrderFactory.sol";
+
 struct PriceOracle{
     address provider;
     uint256 cpu_price;
     uint256 memory_price;
     uint256 storage_price;
 }
+contract pro is IProvider{
+    function consumeResource(uint256 ,uint256 ,uint256 ) external{
 
+}
+    function recoverResource(uint256, uint256, uint256) external{
+
+    }
+    function challenge() external view returns(bool){
+        return false;
+    }
+    function owner() external view returns(address){
+        return  address(1231);
+    }
+}
 contract ProviderFactory is IProviderFactory{
+    IProvider public ad;
+    constructor(){
+        ad = new pro();
+    }
     // @notice Returns provider contract address if account is a provider else return 0x0
     function getProvideContract(address account) external override view returns(address){
-        return address(1231);
+
+        return address(ad);
     }
 
     // @notice Returns provider contract resources

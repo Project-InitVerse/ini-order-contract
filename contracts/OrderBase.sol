@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.4;
 import "./ReentrancyGuard.sol";
-import "hardhat/console.sol";
 import "../interfaces/IProviderFactory.sol";
 import "../interfaces/IOrderFactory.sol";
 import "../interfaces/IValidatorFactory.sol";
@@ -51,7 +50,8 @@ contract OrderBase is ReentrancyGuard{
     string public server_uri;
     uint256 public totalSpent;
     IValidatorFactory public constant validator_factory = IValidatorFactory(0x000000000000000000000000000000000000c002);
-
+    //TODO for test
+    //IValidatorFactory public validator_factory;
 
     event OrderCreate(address owner_,uint256 cpu,uint256 memory_,uint256 storage_,uint256 cert,uint256 sdl,uint256 order_number);
     event Quote(address  provider,uint256  cpu_price,uint256  memory_price,uint256  storage_price);
@@ -105,6 +105,10 @@ contract OrderBase is ReentrancyGuard{
         require(msg.sender == IProvider( quote_data.provider).owner());
         _;
     }
+    //TODO for test
+//    function set_validator_factory(address _factory_addr) nonReentrant public{
+//        validator_factory = IValidatorFactory(_factory_addr);
+//    }
     // @dev provider quote interface
     // @param p_cpu cpu quote Amount
     // @param p_memory memory quote Amount

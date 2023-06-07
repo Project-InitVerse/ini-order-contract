@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.4;
 
-import "hardhat/console.sol";
 import "./ReentrancyGuard.sol";
 import "./OrderBase.sol";
 import "../interfaces/ICert.sol";
-
 
 contract OrderFactory is IOrderFactory, ReentrancyGuard {
     // max order index start with 1
@@ -16,6 +14,8 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
     mapping(address => uint256) public order_base_map;
     // provider factory address
     address public constant provider_address = address(0x000000000000000000000000000000000000C003);
+    //TODO for test
+    //address public provider_address;
     // Contract owner
     address public owner;
     // Minimum order deposit amount
@@ -56,6 +56,7 @@ contract OrderFactory is IOrderFactory, ReentrancyGuard {
 
     //    // @dev Modify the provider factory address
     //    // @param new factory address
+    //    //TODO for test
     //    function set_provider_factory(address factory_addr) only_owner nonReentrant public{
     //        provider_address = factory_addr;
     //    }

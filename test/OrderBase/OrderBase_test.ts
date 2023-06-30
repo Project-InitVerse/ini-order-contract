@@ -268,7 +268,42 @@ describe('order factory',function(){
     let mock_balance_after = await ethers.provider.getBalance(mock_addr);
     expect(mock_balance_after.sub(mock_balance_before)).to.equal(a.mul(team_percent).div(all_percent));
   });
+  it("change sdl",async function(){
+    await  this.orderFactory.set_provider_factory(this.providerFactory.address);
+    await  this.orderFactory.set_cert_center(this.certCenter.address);
 
+    await  this.orderFactory.connect(order_1).createOrder(100,1000,100000,0,"0x1234");
+    let order_base_address_1 =  await this.orderFactory.orders(1);
+    this.order_base_1 = <OrderBase>await ethers.getContractAt("OrderBase",order_base_address_1);
+    await this.order_base_1.set_validator_factory(this.validator.address);
+    expect(await this.order_base_1.o_sdl_trx_id()).to.be.equal(ethers.BigNumber.from("0x1234"));
+    await this.order_base_1.connect(order_1).change_sdl_trx_hash("0x77608d9159be06881db1d9199a30247cc859f72711c884f69f81045c35177fa8");
+    expect(await this.order_base_1.o_sdl_trx_id()).to.be.equal(ethers.BigNumber.from("0x77608d9159be06881db1d9199a30247cc859f72711c884f69f81045c35177fa8"));
+
+    expect(await this.order_base_1.connect(order_1).deposit_balance({value:ethers.utils.parseEther("5")}));
+    await expect(this.order_base_1.connect(provider_1).quote(10000000,10000000,2000000));
+    await expect(this.order_base_1.connect(provider_2).quote(20000000,20000000,4000000));
+
+    await expect(this.order_base_1.connect(order_1).change_sdl_trx_hash("0x77608d9159be06881db1d9199a30247cc859f72711c884f69f81045c35177fa8")).to.be.revertedWith('Only the creation and running states can modify the sdl');
+
+    expect(await this.order_base_1.connect(order_1).choose_provider(0));
+    expect(await this.order_base_1.order_status()).to.be.equal(2);
+    expect(await this.order_base_1.final_price()).to.be.equal(ethers.BigNumber.from(((100*10000000)+(1000*10000000)+(100000*2000000)) ));
+
+    await this.order_base_1.connect(order_1).change_sdl_trx_hash("0x77608d9159be06881db1d9199a30247cc859f72711c884f69f81045c35177fa7");
+
+    expect(await this.order_base_1.o_sdl_trx_id()).to.be.equal("0x77608d9159be06881db1d9199a30247cc859f72711c884f69f81045c35177fa8");
+    expect(await this.order_base_1.o_pending_sdl_trx_id()).to.be.equal(ethers.BigNumber.from("0x77608d9159be06881db1d9199a30247cc859f72711c884f69f81045c35177fa7"));
+
+    await this.order_base_1.connect(provider_1).update_deployment(200,2000,200000,"http://aaaaa.com");
+
+    expect(await this.order_base_1.o_sdl_trx_id()).to.be.equal("0x77608d9159be06881db1d9199a30247cc859f72711c884f69f81045c35177fa7");
+    expect(await this.order_base_1.o_pending_sdl_trx_id()).to.be.equal(ethers.BigNumber.from("0x0"));
+
+    await this.order_base_1.connect(provider_1).submit_server_uri("http://11111.com");
+    expect(await this.order_base_1.server_uri()).to.be.equal("http://11111.com");
+
+  });
 
   it("withdraw fund", async function() {
     await  this.orderFactory.set_provider_factory(this.providerFactory.address);

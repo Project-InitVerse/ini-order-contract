@@ -231,6 +231,7 @@ contract OrderBase is ReentrancyGuard {
         sendValue(pay_target, pay_amount - team_pay);
         //payable(pay_target).transfer(pay_amount);
         totalSpent = totalSpent + pay_amount;
+        last_pay_time =block.timestamp;
         emit PayBill(validator_factory.team_address(), team_pay);
         emit PayBill(pay_target, pay_amount - team_pay);
         return pay_amount;
